@@ -18,13 +18,17 @@ namespace IdentittVault.System.Security
         private const string AT_LEAST_ONE_SPEC = @"At least one special character [*.!@#$%^&(){}[]:;<>,.?/~_+-=|\];";
 
         private readonly SHA256 sha256Hash;
-        private readonly Aes aesCypher;
+
+        private byte[] Key { get; }
+        private byte[] IV { get; }
+
         private readonly List<PasswordRule> rules;
 
-        public IdentittVaultSecure()
+        public IdentittVaultSecure(string key, string iv)
         {
             sha256Hash = SHA256.Create();
-            aesCypher = Aes.Create();
+            Key = Convert.FromBase64String(key);
+            IV = Convert.FromBase64String(iv);
             rules = new();
             PopulateRules();
         }
@@ -44,6 +48,17 @@ namespace IdentittVault.System.Security
             return builder.ToString();
         }
 
+        public string DecryptionWithRSAPrivateKey(string cipherData, ReadOnlySpan<byte> RSAKey, bool DoOAEPadding)
+        {
+            byte[] plainData;
+            using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
+            {
+                RSA.ImportRSAPrivateKey(RSAKey, out int bytesRead);
+                plainData = RSA.Decrypt(Convert.FromBase64String(cipherData), DoOAEPadding);
+            }
+            return Encoding.UTF8.GetString(plainData);
+        }
+
         public string ComputeSha256Hash(string plainData)
         {
             // ComputeHash - returns byte array  
@@ -59,35 +74,6 @@ namespace IdentittVault.System.Security
             return builder.ToString();
         }
 
-        public string EncryptWithAES(string plainData)
-        {
-            // Check arguments.
-            if (plainData == null || plainData.Length <= 0)
-                throw new ArgumentNullException("plainData");
-
-            byte[] encrypted;
-
-            // Create an encryptor to perform the stream transform.
-            ICryptoTransform encryptor = aesCypher.CreateEncryptor(aesCypher.Key, aesCypher.IV);
-
-            // Create the streams used for encryption.
-            using (MemoryStream msEncrypt = new())
-            {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                {
-                    using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
-                    {
-                        //Write all data to the stream.
-                        swEncrypt.Write(plainData);
-                    }
-
-                    encrypted = msEncrypt.ToArray();
-                }
-            }
-
-            return Encoding.UTF8.GetString(encrypted);
-        }
-
         public byte[] EncryptWithAES(byte[] plainData)
         {
             // Check arguments.
@@ -96,28 +82,34 @@ namespace IdentittVault.System.Security
 
             byte[] encrypted;
 
-            // Create an encryptor to perform the stream transform.
-            ICryptoTransform encryptor = aesCypher.CreateEncryptor(aesCypher.Key, aesCypher.IV);
-
-            // Create the streams used for encryption.
-            using (MemoryStream msEncrypt = new())
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
             {
-                using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
-                {
-                    using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
-                    {
-                        //Write all data to the stream.
-                        swEncrypt.Write(plainData);
-                    }
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
 
-                    encrypted = msEncrypt.ToArray();
+                // Create an encryptor to perform the stream transform.
+                ICryptoTransform encryptor = rijAlg.CreateEncryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for encryption.
+                using (MemoryStream msEncrypt = new())
+                {
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, encryptor, CryptoStreamMode.Write))
+                    {
+                        using (StreamWriter swEncrypt = new StreamWriter(csEncrypt))
+                        {
+                            //Write all data to the stream.
+                            swEncrypt.Write(Convert.ToBase64String(plainData));
+                        }
+
+                        encrypted = msEncrypt.ToArray();
+                    }
                 }
             }
 
             return encrypted;
         }
 
-        public string DecryptWithAES(string cipherData)
+        public byte[] DecryptWithAES(byte[] cipherData)
         {
             // Check arguments.
             if (cipherData == null || cipherData.Length <= 0)
@@ -125,22 +117,28 @@ namespace IdentittVault.System.Security
 
             // Declare the string used to hold
             // the decrypted text.
-            string plainData = null;
+            byte[] plainData = null;
 
-            // Create a decryptor to perform the stream transform.
-            ICryptoTransform decryptor = aesCypher.CreateDecryptor(aesCypher.Key, aesCypher.IV);
-
-            // Create the streams used for decryption.
-            using (MemoryStream msDecrypt = new MemoryStream(Encoding.UTF8.GetBytes(cipherData)))
+            using (RijndaelManaged rijAlg = new RijndaelManaged())
             {
-                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
-                {
-                    using (StreamReader srDecrypt = new StreamReader(csDecrypt))
-                    {
+                rijAlg.Key = Key;
+                rijAlg.IV = IV;
 
-                        // Read the decrypted bytes from the decrypting stream
-                        // and place them in a string.
-                        plainData = srDecrypt.ReadToEnd();
+                // Create a decryptor to perform the stream transform.
+                ICryptoTransform decryptor = rijAlg.CreateDecryptor(rijAlg.Key, rijAlg.IV);
+
+                // Create the streams used for decryption.
+                using (MemoryStream msDecrypt = new MemoryStream(cipherData))
+                {
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                    {
+                        using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                        {
+
+                            // Read the decrypted bytes from the decrypting stream
+                            // and place them in a string.
+                            plainData = Convert.FromBase64String(srDecrypt.ReadToEnd());
+                        }
                     }
                 }
             }
@@ -161,15 +159,15 @@ namespace IdentittVault.System.Security
             return keys;
         }
 
-        public string Encryption(byte[] plainData, RSAParameters RSAKey, bool DoOAEPPadding)
+        public string EncryptionWithRSAPublicKey(string plainData, ReadOnlySpan<byte> RSAKey, bool DoOAEPPadding)
         {
             byte[] encryptedData;
             using (RSACryptoServiceProvider RSA = new RSACryptoServiceProvider())
             {
-                RSA.ImportParameters(RSAKey);
-                encryptedData = RSA.Encrypt(plainData, DoOAEPPadding);
+                RSA.ImportRSAPublicKey(RSAKey, out int bytesRead);
+                encryptedData = RSA.Encrypt(Encoding.UTF8.GetBytes(plainData), DoOAEPPadding);
             }
-            return Encoding.UTF8.GetString(encryptedData);
+            return Convert.ToBase64String(encryptedData);
         }
 
         public PasswordResult ValidatePasswordStrength(string password)

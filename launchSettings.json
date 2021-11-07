@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "composeLaunchServiceName": "identittvault",
+      "serviceActions": {
+        "db": "StartWithoutDebugging",
+        "identittvault": "StartDebugging"
+      },
+      "composeLaunchAction": "None",
+      "commandVersion": "1.0"
+    }
+  }
+}

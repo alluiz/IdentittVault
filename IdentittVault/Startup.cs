@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,21 +35,26 @@ namespace IdentittVault
             {
                 string connectionString = Configuration.GetConnectionString("DefaultConnection");
 
-                //Only for development when docker localhost address is different
-                if (IsDevelopmentEnv() && IsRunningInContainer())
+                if (IsRunningInContainer())
                     connectionString = Configuration.GetConnectionString("DockerConnection");
 
-                options.UseMySQL(connectionString);
+                MySqlConnectionStringBuilder connectionStringBuilder = new MySqlConnectionStringBuilder(connectionString);
+                connectionStringBuilder.Password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "default_password";
+
+                options.UseMySQL(connectionStringBuilder.ConnectionString);
             });
 
 
-            services.AddSingleton<IdentittVaultSecure>();
+            services.AddSingleton(x => new IdentittVaultSecure(
+                Environment.GetEnvironmentVariable("IDENTITT_KEY"), 
+                Environment.GetEnvironmentVariable("IDENTITT_IV")));
 
-            //services.AddScoped<ICrudRepository<Key>, CrudRepository<Key>>();
+            services.AddScoped<ICrudRepository<Account>, CrudRepository<Account>>();
             //services.AddScoped<ICrudService<Application>, CrudService<Application, ICrudRepository<Application>>>();
 
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<AccountService>();
 
             services.AddControllers()
                 .AddNewtonsoftJson(options =>
@@ -57,11 +63,6 @@ namespace IdentittVault
                     options.SerializerSettings.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
                 });
-
-            static bool IsDevelopmentEnv()
-            {
-                return "DEVELOPMENT".Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), StringComparison.OrdinalIgnoreCase);
-            }
 
             static bool IsRunningInContainer()
             {

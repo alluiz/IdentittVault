@@ -12,13 +12,11 @@ namespace IdentittVault.Services
 {
     public class UserService : CrudService<User, ICrudRepository<User>>, IUserService
     {
-        private readonly IdentittVaultSecure secure;
         private readonly IUserRepository userRepository;
 
         public UserService(IUserRepository userRepository,
-            IdentittVaultSecure secure) : base(userRepository)
+            IdentittVaultSecure secure) : base(userRepository, secure)
         {
-            this.secure = secure;
             this.userRepository = userRepository;
         }
 

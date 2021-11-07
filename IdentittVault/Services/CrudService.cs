@@ -1,6 +1,7 @@
 ﻿using IdentittVault.Entities;
 using IdentittVault.Repositories;
 using IdentittVault.System;
+using IdentittVault.System.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,10 +13,12 @@ namespace IdentittVault.Services
         where TRepository : ICrudRepository<TEntity>
     {
         protected readonly TRepository repository;
+        protected readonly IdentittVaultSecure secure;
 
-        public CrudService(TRepository repository)
+        public CrudService(TRepository repository, IdentittVaultSecure secure)
         {
             this.repository = repository;
+            this.secure = secure;
         }
 
         protected virtual void OnCreate(TEntity entity)

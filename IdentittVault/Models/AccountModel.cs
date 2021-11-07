@@ -14,6 +14,7 @@ namespace IdentittVault.Models
         [Required]
         public string Password { get; set; }
         public User User { get; set; }
+        public Guid UserId { get; set; }
 
         public override Account ToEntity()
         {
@@ -21,6 +22,7 @@ namespace IdentittVault.Models
             {
                 Id = this.Id,
                 Name = this.Name,
+                UserId = this.UserId,
                 Username = this.Username,
                 Password = this.Password
             };

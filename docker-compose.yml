@@ -1,0 +1,25 @@
+version: '3.4'
+
+services:
+  db:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD?default_password}
+      MYSQL_DATABASE: "IdentittVault"
+    volumes:
+      - "./IdentittVault/Scripts/schema.sql:/docker-entrypoint-initdb.d/1.sql"
+    ports:
+      - "7120:3306"
+  identittvault:
+    depends_on:
+      - db
+    image: ${DOCKER_REGISTRY-}identittvault
+    build:
+      context: .
+      dockerfile: IdentittVault/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD?default_password}
+      IDENTITT_KEY: ${IDENTITT_KEY}
+      IDENTITT_IV: ${IDENTITT_IV}
+  

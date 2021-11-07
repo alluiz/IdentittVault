@@ -10,9 +10,9 @@ namespace IdentittVault.Entities
 {
     public class Account : Entity
     {
-        [Required]
         public User User { get; set; }
 
+        [Required]
         public Guid UserId { get; set; }
 
         [Required]
@@ -28,12 +28,13 @@ namespace IdentittVault.Entities
         {
             AccountModel model = new();
             model.Id = this.Id;
-
+            model.UserId = this.UserId;
+            
             if (expand)
             {
-                model.User = this.User;
                 model.Username = this.Username;
                 model.Name = this.Name;
+                model.Password = this.Password;
             }
 
             return model;
