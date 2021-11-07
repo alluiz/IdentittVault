@@ -11,7 +11,7 @@ services:
       - "./IdentittVault/Scripts/schema.sql:/docker-entrypoint-initdb.d/1.sql"
     ports:
       - "7120:3306"
-  identittvault:
+  app:
     depends_on:
       - db
     image: ${DOCKER_REGISTRY-}identittvault
