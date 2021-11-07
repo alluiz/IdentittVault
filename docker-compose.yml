@@ -22,4 +22,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD?default_password}
       IDENTITT_KEY: ${IDENTITT_KEY}
       IDENTITT_IV: ${IDENTITT_IV}
+    ports:
+      - "59000:443"
+      - "59001:80"
   

@@ -362,3 +362,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /IdentittVault/Secrets/root_password.txt
+.vscode/tasks.json
+.vscode/launch.json
